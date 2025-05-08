@@ -7,6 +7,7 @@ pipeline {
     }
     
     environment {
+        ARTIFACTORY_URL = 'docker.local'
         SONAR_TOKEN = credentials('SONAR_TOKEN')
         JAVA_HOME = '/usr/lib/jvm/java-17-amazon-corretto.x86_64'  // Set JAVA_HOME directly
     }
