@@ -7,8 +7,10 @@ pipeline {
     }
 
     environment {
+        JAVA_HOME = tool 'OpenJDK 11'
+        PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
         SONAR_TOKEN = credentials('SONAR_TOKEN')
-        ARTIFACTORY_URL = 'https://your-real-org.jfrog.io/artifactory' // Replace with your actual Artifactory URL
+        ARTIFACTORY_URL = 'https://your-real-org.jfrog.io/artifactory'
     }
 
     stages {
