@@ -9,17 +9,19 @@ pipeline {
     environment {
         SONAR_TOKEN = credentials('SONAR_TOKEN')
         ARTIFACTORY_URL = 'https://your-real-org.jfrog.io/artifactory'
-        JAVA_HOME = tool 'OpenJDK 11' // Explicitly set JAVA_HOME to OpenJDK 11
-        PATH = "${env.JAVA_HOME}/bin:${env.PATH}" // Ensure Java 11 is first in the PATH
     }
 
     stages {
         stage('Set Up Environment') {
             steps {
                 script {
-                    // Ensure JAVA_HOME and PATH are correctly set
-                    env.JAVA_HOME = tool name: 'OpenJDK 11', type: 'jdk'
+                    // Ensure JAVA_HOME is set to OpenJDK 11
+                    env.JAVA_HOME = tool 'OpenJDK 11'
                     env.PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
+
+                    // Debug environment variables
+                    echo "JAVA_HOME=${env.JAVA_HOME}"
+                    echo "PATH=${env.PATH}"
                 }
             }
         }
@@ -36,7 +38,10 @@ pipeline {
 
         stage('Build') {
             steps {
-                sh 'mvn clean verify'
+                // Ensure JAVA_HOME is set before running Maven commands
+                withEnv(["JAVA_HOME=${env.JAVA_HOME}", "PATH=${env.JAVA_HOME}/bin:${env.PATH}"]) {
+                    sh 'mvn clean verify'
+                }
             }
         }
 
