@@ -2,14 +2,14 @@ pipeline {
     agent any
     
     tools {
-        maven 'Maven_3.9.9'
-        jdk 'JDK17' // Make sure this matches your Jenkins tool configuration
+        maven 'Maven 3.9.9'
+        jdk 'OpenJDK 11' // Using the available JDK in Jenkins
     }
     
     environment {
         SONAR_TOKEN = credentials('SONAR_TOKEN')
         // Explicitly define JAVA_HOME here
-        JAVA_HOME = tool 'JDK17' // Must match the tool name in Jenkins
+        JAVA_HOME = tool 'OpenJDK 11' // Using the available JDK in Jenkins
     }
     
     stages {
@@ -34,7 +34,7 @@ pipeline {
         
         stage('Build') {
             steps {
-                withEnv(["JAVA_HOME=${tool 'JDK17'}", "PATH+MAVEN=${tool 'JDK17'}/bin:${tool 'Maven_3.9.9'}/bin"]) {
+                withEnv(["JAVA_HOME=${tool 'OpenJDK 11'}", "PATH+MAVEN=${tool 'OpenJDK 11'}/bin:${tool 'Maven 3.9.9'}/bin"]) {
                     sh 'mvn clean verify'
                 }
             }
@@ -42,7 +42,7 @@ pipeline {
         
         stage('SonarQube Analysis') {
             steps {
-                withEnv(["JAVA_HOME=${tool 'JDK17'}", "PATH+MAVEN=${tool 'JDK17'}/bin:${tool 'Maven_3.9.9'}/bin"]) {
+                withEnv(["JAVA_HOME=${tool 'OpenJDK 11'}", "PATH+MAVEN=${tool 'OpenJDK 11'}/bin:${tool 'Maven 3.9.9'}/bin"]) {
                     sh 'mvn sonar:sonar -Dsonar.host.url=http://your-sonarqube-url -Dsonar.login=$SONAR_TOKEN'
                 }
             }
