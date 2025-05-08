@@ -1,74 +1,66 @@
 pipeline {
     agent any
-
+    
     tools {
-        maven 'Maven 3.9.9'
-        jdk 'OpenJDK 11'  // Ensure OpenJDK 11 is selected for this pipeline
+        maven 'Maven_3.9.9'
+        jdk 'JDK17' // Make sure this matches your Jenkins tool configuration
     }
-
+    
     environment {
         SONAR_TOKEN = credentials('SONAR_TOKEN')
-        ARTIFACTORY_URL = 'https://your-real-org.jfrog.io/artifactory'
+        // Explicitly define JAVA_HOME here
+        JAVA_HOME = tool 'JDK17' // Must match the tool name in Jenkins
     }
-
+    
     stages {
         stage('Set Up Environment') {
             steps {
                 script {
-                    // Ensure JAVA_HOME is set to OpenJDK 11
-                    env.JAVA_HOME = tool 'OpenJDK 11'
-                    env.PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
-
-                    // Debug environment variables
-                    echo "JAVA_HOME=${env.JAVA_HOME}"
-                    echo "PATH=${env.PATH}"
+                    sh "echo JAVA_HOME=$JAVA_HOME"
+                    sh "echo PATH=$PATH"
                 }
             }
         }
-
+        
         stage('Debug Environment') {
             steps {
-                sh 'echo "JAVA_HOME=$JAVA_HOME"'
-                sh 'echo "PATH=$PATH"'
-                sh 'which java || echo "Java not found!"'
-                sh 'java -version || echo "java -version failed"'
+                sh 'echo JAVA_HOME=$JAVA_HOME'
+                sh 'echo PATH=$PATH'
+                sh 'which java'
+                sh 'java -version'
                 sh 'mvn -version || echo "mvn -version failed"'
             }
         }
-
+        
         stage('Build') {
             steps {
-                // Ensure JAVA_HOME is set before running Maven commands
-                withEnv(["JAVA_HOME=${env.JAVA_HOME}", "PATH=${env.JAVA_HOME}/bin:${env.PATH}"]) {
+                withEnv(["JAVA_HOME=${tool 'JDK17'}", "PATH+MAVEN=${tool 'JDK17'}/bin:${tool 'Maven_3.9.9'}/bin"]) {
                     sh 'mvn clean verify'
                 }
             }
         }
-
+        
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarCloud') {
-                    sh "mvn sonar:sonar -Dsonar.login=$SONAR_TOKEN"
+                withEnv(["JAVA_HOME=${tool 'JDK17'}", "PATH+MAVEN=${tool 'JDK17'}/bin:${tool 'Maven_3.9.9'}/bin"]) {
+                    sh 'mvn sonar:sonar -Dsonar.host.url=http://your-sonarqube-url -Dsonar.login=$SONAR_TOKEN'
                 }
             }
         }
-
+        
         stage('Quality Gate') {
             steps {
-                timeout(time: 1, unit: 'MINUTES') {
+                timeout(time: 1, unit: 'HOURS') {
                     waitForQualityGate abortPipeline: true
                 }
             }
         }
-
+        
         stage('Docker Build and Push') {
             steps {
-                script {
-                    def dockerImage = docker.build("${ARTIFACTORY_URL}/docker-local/myapp:${BUILD_NUMBER}")
-                    docker.withRegistry("${ARTIFACTORY_URL}", 'jfrog-credentials') {
-                        dockerImage.push()
-                    }
-                }
+                sh 'docker build -t your-image-name:$BUILD_NUMBER .'
+                sh 'docker tag your-image-name:$BUILD_NUMBER your-registry/your-image-name:$BUILD_NUMBER'
+                sh 'docker push your-registry/your-image-name:$BUILD_NUMBER'
             }
         }
     }
