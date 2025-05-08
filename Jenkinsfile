@@ -57,11 +57,17 @@ pipeline {
         
         stage('Docker Build and Push') {
             steps {
-                sh 'docker build -t your-image-name:$BUILD_NUMBER .'
-                sh 'docker tag your-image-name:$BUILD_NUMBER your-registry/your-image-name:$BUILD_NUMBER'
-                sh 'docker push your-registry/your-image-name:$BUILD_NUMBER'
+            script {
+            // Build Docker image
+            def dockerImage = docker.build("${env.ARTIFACTORY_URL}/docker-local/myapp:${env.BUILD_NUMBER}")
+            // Push to Artifactory
+            docker.withRegistry("${env.ARTIFACTORY_URL}", 'jfrog-credentials') {
+            dockerImage.push()
+            }
+            }
             }
         }
+
     }
     
     post {
