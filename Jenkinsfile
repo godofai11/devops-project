@@ -58,7 +58,7 @@ pipeline {
         stage('Docker Build and Push') {
     steps {
         sh '''
-            docker build -t $ARTIFACTORY_URL/docker-local/myapp:$BUILD_NUMBER .
+            docker build -t $ARTIFACTORY_URL/myapp:$BUILD_NUMBER .
             echo $ARTIFACTORY_PASSWORD | docker login $ARTIFACTORY_URL -u $ARTIFACTORY_USERNAME --password-stdin
             docker push $ARTIFACTORY_URL/docker-local/myapp:$BUILD_NUMBER
         '''
