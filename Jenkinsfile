@@ -7,13 +7,30 @@ pipeline {
     }
 
     environment {
-        JAVA_HOME = tool 'OpenJDK 11'
-        PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
         SONAR_TOKEN = credentials('SONAR_TOKEN')
         ARTIFACTORY_URL = 'https://your-real-org.jfrog.io/artifactory'
     }
 
     stages {
+        stage('Set Up Environment') {
+            steps {
+                script {
+                    env.JAVA_HOME = tool name: 'OpenJDK 11', type: 'jdk'
+                    env.PATH = "${env.JAVA_HOME}/bin:${env.PATH}"
+                }
+            }
+        }
+
+        stage('Debug Environment') {
+            steps {
+                sh 'echo "JAVA_HOME=$JAVA_HOME"'
+                sh 'echo "PATH=$PATH"'
+                sh 'which java || echo "Java not found!"'
+                sh 'java -version || echo "java -version failed"'
+                sh 'mvn -version || echo "mvn -version failed"'
+            }
+        }
+
         stage('Build') {
             steps {
                 sh 'mvn clean verify'
