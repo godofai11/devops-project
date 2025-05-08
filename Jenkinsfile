@@ -3,7 +3,7 @@ pipeline {
     
     tools {
         maven 'Maven 3.9.9'
-        jdk 'OpenJDK 11'
+        jdk 'OpenJDK 17'  // Changed from OpenJDK 11 to OpenJDK 17
     }
     
     environment {
@@ -41,7 +41,7 @@ pipeline {
                        
                        # Export to a file that can be sourced in later stages
                        echo "export REAL_JAVA_HOME=$REAL_JAVA_HOME" > java_home.sh
-                       echo "export PATH=$JAVA_BIN_DIR:$PATH" >> java_home.sh
+                       echo "export PATH=$REAL_JAVA_HOME/bin:$PATH" >> java_home.sh
                        chmod +x java_home.sh
                        cat java_home.sh
                     '''
