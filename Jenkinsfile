@@ -11,24 +11,40 @@ pipeline {
     }
     
     stages {
-        stage('Set Up Environment') {
+        stage('Find Java') {
             steps {
                 script {
-                    // Get absolute paths from tool steps
-                    def javaHome = tool 'OpenJDK 11'
-                    def mvnHome = tool 'Maven 3.9.9'
+                    // Find actual Java location
+                    sh '''
+                       echo "Searching for Java installation..."
+                       which java
+                       readlink -f $(which java) || echo "Failed to resolve java symlink"
+                       ls -la /usr/lib/jvm/ || echo "JVM directory not found"
+                       find /usr/lib/jvm -name "java" -type f || echo "Java executable not found in JVM directory"
+                       echo "Using java version:"
+                       java -version || echo "Java version check failed"
+                    '''
                     
-                    // Print debug info
-                    sh "echo Java home: ${javaHome}"
-                    sh "echo Maven home: ${mvnHome}"
-                    
-                    // Set environment variables for all steps using environment directive
-                    env.JAVA_HOME = javaHome
-                    env.M2_HOME = mvnHome
-                    env.PATH = "${javaHome}/bin:${mvnHome}/bin:${env.PATH}"
-                    
-                    sh "echo Updated JAVA_HOME: ${env.JAVA_HOME}"
-                    sh "echo Updated PATH: ${env.PATH}"
+                    // Set JAVA_HOME to the actual location where Java is installed
+                    sh '''
+                       # Find the real path to Java executable
+                       JAVA_EXEC_PATH=$(readlink -f $(which java))
+                       echo "Java executable path: $JAVA_EXEC_PATH"
+                       
+                       # Get parent directory (bin)
+                       JAVA_BIN_DIR=$(dirname "$JAVA_EXEC_PATH")
+                       echo "Java bin directory: $JAVA_BIN_DIR"
+                       
+                       # Get parent directory of bin (this should be JAVA_HOME)
+                       REAL_JAVA_HOME=$(dirname "$JAVA_BIN_DIR")
+                       echo "Detected JAVA_HOME: $REAL_JAVA_HOME"
+                       
+                       # Export to a file that can be sourced in later stages
+                       echo "export REAL_JAVA_HOME=$REAL_JAVA_HOME" > java_home.sh
+                       echo "export PATH=$JAVA_BIN_DIR:$PATH" >> java_home.sh
+                       chmod +x java_home.sh
+                       cat java_home.sh
+                    '''
                 }
             }
         }
@@ -36,17 +52,19 @@ pipeline {
         stage('Debug Environment') {
             steps {
                 sh '''
-                   echo "==== Environment Debugging ===="
-                   echo "JAVA_HOME=$JAVA_HOME"
-                   echo "M2_HOME=$M2_HOME"
+                   echo "==== Environment Before Sourcing ===="
+                   echo "Current JAVA_HOME=$JAVA_HOME"
+                   echo "Maven exists: $(which mvn || echo 'Not found')"
+                   echo "====================================="
+                   
+                   # Source the java_home.sh file to get the REAL_JAVA_HOME
+                   source ./java_home.sh
+                   
+                   echo "==== Environment After Sourcing ===="
+                   echo "REAL_JAVA_HOME=$REAL_JAVA_HOME"
                    echo "PATH=$PATH"
-                   which java || echo "java not found in PATH"
-                   java -version || echo "java -version failed"
-                   which mvn || echo "mvn not found in PATH"
-                   mvn -version || echo "mvn -version failed"
-                   ls -la $JAVA_HOME/bin || echo "JAVA_HOME/bin not accessible"
-                   ls -la $M2_HOME/bin || echo "M2_HOME/bin not accessible"
-                   echo "===== End Debugging ====="
+                   ls -la $REAL_JAVA_HOME/bin || echo "REAL_JAVA_HOME/bin not accessible"
+                   echo "====================================="
                 '''
             }
         }
@@ -54,10 +72,15 @@ pipeline {
         stage('Build') {
             steps {
                 sh '''
-                   export JAVA_HOME=$JAVA_HOME
-                   export PATH=$JAVA_HOME/bin:$PATH
-                   echo "Build step JAVA_HOME=$JAVA_HOME"
-                   echo "Build step PATH=$PATH"
+                   # Source the java_home.sh file
+                   source ./java_home.sh
+                   
+                   # Use the real JAVA_HOME for Maven
+                   export JAVA_HOME=$REAL_JAVA_HOME
+                   echo "Using JAVA_HOME=$JAVA_HOME for Maven"
+                   
+                   # Run Maven with the correct JAVA_HOME
+                   mvn -version
                    mvn clean verify
                 '''
             }
@@ -66,8 +89,8 @@ pipeline {
         stage('SonarQube Analysis') {
             steps {
                 sh '''
-                   export JAVA_HOME=$JAVA_HOME
-                   export PATH=$JAVA_HOME/bin:$PATH
+                   source ./java_home.sh
+                   export JAVA_HOME=$REAL_JAVA_HOME
                    mvn sonar:sonar -Dsonar.host.url=http://your-sonarqube-url -Dsonar.login=$SONAR_TOKEN
                 '''
             }
